@@ -125,7 +125,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     if args.cwd:  # Change working directory if requested
         os.chdir(args.cwd)
 
-    LOGGER.setLevel([logging.WARNING, logging.INFO, logging.DEBUG][args.v])
+    verbose_index = max(0, min(2, args.v))  # Clamp within the range of levels
+    LOGGER.setLevel([logging.WARNING, logging.INFO, logging.DEBUG][verbose_index])
     if on_ci() and not args.no_ci_skip:
         LOGGER.info("Skipping as we're on CI and --no-ci-skip not passed in")
     else:
