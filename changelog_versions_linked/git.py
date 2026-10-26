@@ -2,6 +2,7 @@
 
 import re
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 __all__ = ["get_tracked_changelog_files", "to_url_from_git"]
@@ -29,7 +30,7 @@ def get_tracked_changelog_files() -> list[Path]:
     return [Path(filename) for filename in result.stdout.split("\0") if filename]
 
 
-def to_url_from_git() -> callable[[str], str]:
+def to_url_from_git() -> Callable[[str], str]:
     """Generate a URL template function based on the current Git remote."""
     current_branch = _git("rev-parse", "--abbrev-ref", "HEAD")
     current_remote = _git("config", "--get", f"branch.{current_branch}.remote")

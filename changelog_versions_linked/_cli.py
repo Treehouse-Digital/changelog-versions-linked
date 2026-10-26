@@ -31,11 +31,7 @@ import rich.traceback
 from rich.logging import RichHandler
 
 from .git import get_tracked_changelog_files, to_url_from_git
-from .newlines_factories import (
-    EofNewlinesFactory,
-    NewlinesAfterFactory,
-    NewlinesBeforeFactory,
-)
+from .newlines_factories import EofNewlinesFactory, ReNewlinesFactory
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -112,14 +108,14 @@ def main(argv: Sequence[str] | None = None) -> None:
         "--insert-after-re",
         metavar="REGEX",
         dest="insert_method",
-        type=NewlinesAfterFactory,
+        type=ReNewlinesFactory.after,
         help=f"Add new URL lines after {insert_help_suffix}",
     )
     insert_group.add_argument(
         "--insert-before-re",
         metavar="REGEX",
         dest="insert_method",
-        type=NewlinesBeforeFactory,
+        type=ReNewlinesFactory.before,
         help=f"Insert new URL lines before {insert_help_suffix}",
     )
     parser.add_argument(
@@ -140,11 +136,12 @@ def main(argv: Sequence[str] | None = None) -> None:
             def to_url(version: str) -> str:
                 return args.url_template.replace("<VERSION>", version)
 
-        filenames = [
-            filename
-            for raw_filename in args.filenames
-            if (filename := raw_filename.resolve()).is_file()
-        ] or get_tracked_changelog_files()
+        filenames = [] if args.filenames else get_tracked_changelog_files()
+        for raw_filename in args.filenames:
+            if (filename := raw_filename.resolve()).is_file():
+                filenames.append(filename)
+            else:
+                parser.error(f"File not found: {str(raw_filename)!r}")
 
         LOGGER.info("%s filenames to check", len(filenames))
         errors = []
@@ -183,7 +180,17 @@ def update_changelog_with_urls(insert_method: _C, to_url: _U, path: Path) -> Non
     ]
 
     if lines_to_add:
-        path.write_text(insert_method(contents, lines_to_add))
+        new_contents = insert_method(contents, lines_to_add)
+        if (
+            isinstance(insert_method, ReNewlinesFactory)
+            and insert_method.last_found is None
+        ):
+            LOGGER.warning(
+                f"No lines matching {insert_method.re.pattern!r} in {path}, "
+                "not edits made"
+            )
+        else:
+            path.write_text(new_contents)
 
 
 if __name__ == "__main__":

@@ -3,13 +3,9 @@
 import abc
 import re
 from collections.abc import Iterable
+from typing import Self
 
-__all__ = [
-    "EofNewlinesFactory",
-    "NewlinesAfterFactory",
-    "NewlinesBeforeFactory",
-    "ReNewlinesFactory",
-]
+__all__ = ["EofNewlinesFactory", "ReNewlinesFactory"]
 
 
 class AbcNewlinesFactory(abc.ABC):
@@ -31,34 +27,47 @@ class EofNewlinesFactory(AbcNewlinesFactory):
 class ReNewlinesFactory(AbcNewlinesFactory):
     """Abstract base class for regex-based newline factories."""
 
-    def __init__(self, re_pattern: str, flags: int = 0) -> None:
+    @classmethod
+    def before(cls, re_pattern: str) -> Self:
+        """Create callable for inserting newlines before a matching regex."""
+        return cls(re_pattern, use_insert=True)
+
+    @classmethod
+    def after(cls, re_pattern: str) -> Self:
+        """Create callable for inserting newlines after a matching regex."""
+        return cls(re_pattern, use_insert=False)
+
+    def __init__(
+        self,
+        re_pattern: str,
+        flags: int = 0,
+        *,
+        use_insert: bool = False,
+    ) -> None:
         """Initialize the regex pattern with flags."""
         self.re = re.compile(re_pattern, flags=flags)
-
-
-class NewlinesBeforeFactory(AbcNewlinesFactory):
-    """Factory for inserting newlines before a matching regular expression."""
+        self.last_found = None
+        self.use_insert = use_insert
 
     def __call__(self, contents: str, lines_to_add: Iterable[str]) -> str:
         """Override to insert newlines before a matching regular expression."""
-        results = []
         found = None
+        results = []
         for line in contents.splitlines():
-            if found is None and (found := self.re.search(line)):
-                results += lines_to_add
-            results.append(line)
+            if found is not None or not (found := self.re.search(line)):
+                new_lines = [line]
+            elif self.use_insert:
+                new_lines = (*lines_to_add, line)
+            else:
+                new_lines = (line, *lines_to_add)
+
+            self.last_found = found
+            results.extend(new_lines)
+
         return "\n".join(results)
 
-
-class NewlinesAfterFactory(AbcNewlinesFactory):
-    """Factory for inserting newlines after a matching regular expression."""
-
-    def __call__(self, contents: str, lines_to_add: Iterable[str]) -> str:
-        """Override to insert newlines after a matching regular expression."""
-        results = []
-        found = None
-        for line in contents.splitlines():
-            results.append(line)
-            if found is None and (found := self.re.search(line)):
-                results += lines_to_add
-        return "\n".join(results)
+    @abc.abstractmethod
+    def _amend_lines_when_found(
+        self, lines_for_results: list[str], lines_to_add: Iterable[str]
+    ) -> None:
+        """Amend the lines for results in-place with the lines to add."""
