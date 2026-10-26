@@ -20,7 +20,13 @@ def _git(*args: str) -> str:
 
 def get_tracked_changelog_files() -> list[Path]:
     """Call git ls-files to get any tracked CHANGELOG.md."""
-    return [Path(f) for f in _git("ls-files", "*CHANGELOG.md").splitlines()]
+    result = subprocess.run(
+        ["git", "ls-files", "-z", "*CHANGELOG.md"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [Path(filename) for filename in result.stdout.split("\0") if filename]
 
 
 def to_url_from_git() -> callable[[str], str]:
