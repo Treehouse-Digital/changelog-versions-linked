@@ -1,0 +1,142 @@
+---
+name: Auto Release
+#
+# Automatically create a release from the latest version in CHANGELOG.md
+#
+# Unlike tk-core which needs a separate commit that modifies setup.py specifically for the release,
+# this only tags and creates a release on GitHub as-is.
+#
+
+'on':
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  release_vars:
+    name: Setup Release Variables
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.vars.outputs.name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check for new version from CHANGELOG.md
+        id: changelog_tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu -o pipefail
+
+          TAG="$(grep -m 1 -oP '(?<=^## \[)(?!Unreleased)[^\]]+' CHANGELOG.md)"
+          NEW_VERSION=""
+
+          if gh release view -- "$TAG" &> /dev/null
+          then
+            echo "::warning title=CHANGELOG::Release already exists for $TAG, skipping creation."
+
+          elif git ls-remote --exit-code --tags origin "refs/tags/$TAG" &> /dev/null
+          then
+            echo "::warning title=CHANGELOG::Tag $TAG already exists, skipping creation."
+
+          else
+            NEW_VERSION="$TAG"
+          fi
+
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup variables
+        id: vars
+        shell: bash
+        env:
+          NEW_CHANGELOG_VERSION: ${{ steps.changelog_tag.outputs.new_version }}
+        run: |
+          set -eu -o pipefail
+
+          RELEASE_NAME=""
+
+          flush_step_output() {
+            echo "name=$RELEASE_NAME" >> "$GITHUB_OUTPUT"
+
+            tee -a "$GITHUB_STEP_SUMMARY" << EOF
+          Results      | Values
+          -------------|----------------
+          Release Name | '$RELEASE_NAME'
+          EOF
+          }
+
+          if [ -n "$NEW_CHANGELOG_VERSION" ]
+          then
+            RELEASE_NAME="$NEW_CHANGELOG_VERSION"
+
+          else
+            echo "::warning title=Release Creation::No new version from CHANGELOG.md; skipping release creation."
+            flush_step_output
+            exit 0
+          fi
+
+          # Pure bash: xargs would strip quotes and process backslashes
+          RELEASE_NAME="${RELEASE_NAME#"${RELEASE_NAME%%[![:space:]]*}"}"
+          RELEASE_NAME="${RELEASE_NAME%"${RELEASE_NAME##*[![:space:]]}"}"
+
+          if [ -z "$RELEASE_NAME" ]
+          then
+            echo "::error title=Release Name::Must not be empty after trimming whitespace."
+            exit 1
+          fi
+
+          if [[ "$RELEASE_NAME" =~ .*[^a-zA-Z0-9._-] ]]
+          then
+            echo "::error title=Release Name::May only contain letters, numbers, '.', '_' and '-': '$RELEASE_NAME'"
+            exit 1
+          fi
+
+          flush_step_output
+
+  release:
+    name: GitHub Release
+    needs: release_vars
+    if: needs.release_vars.outputs.name != ''
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_NAME: "${{ needs.release_vars.outputs.name }}"
+      GH_TOKEN: ${{ github.token }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup env vars
+        shell: bash
+        run: |
+          set -eu -o pipefail
+
+          RELEASE_NAME_ESCAPED="$(sed -e 's/[][\\/.*^$]/\\&/g' <<< "$RELEASE_NAME")"
+          echo "PIP_COMPATIBLE_VERSION=${RELEASE_NAME/-/+}" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME_ESCAPED=$RELEASE_NAME_ESCAPED" >> "$GITHUB_ENV"
+
+      - name: Create release from tag
+        shell: bash
+        run: |
+          set -eu -o pipefail
+          sed -n \
+            -e "/^## \[$RELEASE_NAME_ESCAPED] /,/^## \[/ {/^## \[/d; p}" \
+            -e '/^\[[^]]*]: /p' \
+            CHANGELOG.md \
+          | gh release create \
+            --latest \
+            --target="$GITHUB_SHA" \
+            --title="$RELEASE_NAME" \
+            --notes-file=- \
+            -- "$RELEASE_NAME"  # `--` stops a tag like `-foo` being parsed as a flag
+          gh release view -- "$RELEASE_NAME" | tee -a "$GITHUB_STEP_SUMMARY"
