@@ -1,0 +1,6 @@
+-   id: changelog-versions-linked
+    name: Ensure CHANGELOG versions are linked
+    description: Ensure "Keep a Changelog" style version links are present in the changelog
+    entry: changelog-versions-linked
+    language: python
+    files: .*CHANGELOG\.md$

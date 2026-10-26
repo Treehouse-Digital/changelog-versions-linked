@@ -1,0 +1,31 @@
+---
+################################################################################
+#
+# Usage (install pre-commit to yourself, then install hooks):
+#
+#   https://docs.astral.sh/uv/getting-started/installation/#standalone-installer
+#   uv tool install pre-commit
+#   pre-commit install --allow-missing-config
+#
+################################################################################
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-ast
+      - id: check-case-conflict
+      - id: check-illegal-windows-names
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.22  # Ruff version.
+    hooks: # Run linting and formatting.
+      - id: ruff-check
+      - id: ruff-format

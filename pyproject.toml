@@ -1,0 +1,30 @@
+[project]
+name = "changelog-versions-linked"
+version = "0.1.0"
+description = "Ensure all version links are present in the changelog"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "rich>=15",
+]
+
+[project.scripts]
+changelog-versions-linked = "changelog_versions_linked._cli:main"
+
+[tool.uv]
+package = true
+
+[tool.ruff]
+fix = true
+
+[tool.ruff.lint]
+extend-safe-fixes = ["F401", "FA102", "I001", "RUF022", "TC001", "TC002", "TC003", "TC004"]
+select = ["ALL"]
+ignore = ["G004", "S603", "S607", "EXE003", "COM812", "COM819", "D212", "D213", "D203", "D211"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**/*.py" = ["INP001", "ANN201", "PLC0415", "ANN001", "SLF001", "PLR2004", "S101", "ARG", "FBT"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"package.py" = ["PLC0415", "F821", "INP001"]
+"build.py" = ["INP001"]
