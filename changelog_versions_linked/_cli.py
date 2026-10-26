@@ -170,10 +170,17 @@ def update_changelog_with_urls(insert_method: _C, to_url: _U, path: Path) -> Non
         if (url := to_url(found_version[1]))
     ]
 
-    for raw_line in contents.splitlines():
-        line = raw_line.strip()
-        if line in lines_to_add:
-            lines_to_add.remove(line)
+    existing_versions = {
+        match[1].casefold()
+        for match in re.finditer(
+            r"^ {0,3}\[([^\]\n]+)\]:\s*\S+", contents, flags=re.MULTILINE
+        )
+    }
+    lines_to_add = [
+        line
+        for line in lines_to_add
+        if line.partition("]:")[0][1:].casefold() not in existing_versions
+    ]
 
     if lines_to_add:
         path.write_text(insert_method(contents, lines_to_add))
