@@ -65,9 +65,3 @@ class ReNewlinesFactory(AbcNewlinesFactory):
             results.extend(new_lines)
 
         return "\n".join(results)
-
-    @abc.abstractmethod
-    def _amend_lines_when_found(
-        self, lines_for_results: list[str], lines_to_add: Iterable[str]
-    ) -> None:
-        """Amend the lines for results in-place with the lines to add."""
