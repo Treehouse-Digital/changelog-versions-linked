@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "rich>=15",
-    "typing_extensions; python_version < '3.11'",
+    "typing_extensions>=4; python_version < '3.11'",
 ]
 
 [project.scripts]

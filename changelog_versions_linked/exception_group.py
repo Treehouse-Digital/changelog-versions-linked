@@ -14,7 +14,8 @@ if sys.version_info < (3, 11):
 
     class _GroupedError(Exception):
         def __init__(self, msg: str, errors: list[Exception]) -> None:
-            super().__init__(msg)
+            lines = [msg, *(f"{type(error).__name__}: {error}" for error in errors)]
+            super().__init__("\n".join(lines))
             self.errors = errors
 else:
     _GroupedError = ExceptionGroup  # noqa: F821
