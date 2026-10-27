@@ -47,7 +47,7 @@ Also available as a [pre-commit](https://pre-commit.com/#usage) hook:
 # .pre-commit-config.yaml
 repos:
 - repo: https://github.com/Treehouse-Digital/changelog-versions-linked
-  rev: 0.1.0
+  rev: 0.2.0
   hooks:
     - id: changelog-versions-linked
 ```

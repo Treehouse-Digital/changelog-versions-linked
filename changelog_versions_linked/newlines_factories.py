@@ -1,9 +1,18 @@
 """Factories for creating newlines in changelog files."""
 
+from __future__ import annotations
+
 import abc
 import re
-from collections.abc import Iterable
-from typing import Self
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
 
 __all__ = ["EofNewlinesFactory", "ReNewlinesFactory"]
 
