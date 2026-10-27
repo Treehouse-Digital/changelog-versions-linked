@@ -30,6 +30,7 @@ import rich.pretty
 import rich.traceback
 from rich.logging import RichHandler
 
+from .exception_group import GroupedError
 from .git import get_tracked_changelog_files, to_url_from_git
 from .newlines_factories import EofNewlinesFactory, ReNewlinesFactory
 
@@ -145,16 +146,12 @@ def main(argv: Sequence[str] | None = None) -> None:
                 parser.error(f"File not found: {str(raw_filename)!r}")
 
         LOGGER.info("%s filenames to check", len(filenames))
-        errors = []
-        for path in filenames:
-            try:
-                update_changelog_with_urls(args.insert_method, to_url, path)
-            except Exception as e:  # noqa: BLE001 # We're raising it all later anyways
-                errors.append(e)
 
-        if errors:
-            msg = "Errors occurred while updating changelogs"
-            raise ExceptionGroup(msg, errors)
+        errors_msg = "Errors occurred while updating changelogs"
+        with GroupedError.capture(errors_msg) as capture:
+            for path in filenames:
+                with capture(Exception):
+                    update_changelog_with_urls(args.insert_method, to_url, path)
 
 
 def update_changelog_with_urls(insert_method: _C, to_url: _U, path: Path) -> None:
@@ -169,8 +166,8 @@ def update_changelog_with_urls(insert_method: _C, to_url: _U, path: Path) -> Non
     ]
 
     existing_versions = {
-        match[1].casefold()
-        for match in re.finditer(
+        found[1].casefold()
+        for found in re.finditer(
             r"^ {0,3}\[([^\]\n]+)\]:\s*\S+", contents, flags=re.MULTILINE
         )
     }

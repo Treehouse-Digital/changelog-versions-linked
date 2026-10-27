@@ -1,11 +1,12 @@
 [project]
 name = "changelog-versions-linked"
-version = "0.1.0"
+version = "0.2.0"
 description = "Ensure all version links are present in the changelog"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.9"
 dependencies = [
     "rich>=15",
+    "typing_extensions>=4; python_version < '3.11'",
 ]
 
 [project.scripts]
